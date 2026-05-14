@@ -1,0 +1,6 @@
+## Interface: 120005
+## Title: PetJournalExtended
+## Notes: Replaces the Pet Journal with a compact team view and pet list.
+## Version: 1.0.0
+## Author: PetJournalExtended
+PetJournalExtended.lua
