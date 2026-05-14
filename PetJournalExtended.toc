@@ -3,4 +3,5 @@
 ## Notes: Replaces the Pet Journal with a compact team view and pet list.
 ## Version: 1.0.0
 ## Author: PetJournalExtended
+Constants.lua
 PetJournalExtended.lua

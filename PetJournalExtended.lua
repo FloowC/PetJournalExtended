@@ -1,3 +1,4 @@
+local _,pje = ...
 local PJX = {}
 
 local function SafeGetPetInfoByPetID(petID)
@@ -36,23 +37,25 @@ end
 -- which shows the currently assigned pets. It includes an icon, name, type, and a label for the slot number. 
 -- It also sets up drag-and-drop functionality to allow assigning pets to the slot.
 function PJX:CreatePetSlot(index, parent)
+    -- the frame itself
     local button = CreateFrame("Button", "PetJournalExtendedSlot" .. index, parent, "BackdropTemplate")
-    button:SetSize(214, 160)
+    button:SetSize(pje.constants.SLOT_WIDTH, pje.constants.SLOT_HEIGHT)
     button:SetNormalFontObject("GameFontNormal")
     button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
     button:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 16, edgeSize = 16, insets = { left = 6, right = 6, top = 6, bottom = 6 } })
     button:SetBackdropColor(0.05, 0.05, 0.05, 0.75)
 
+    -- pet icon
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetPoint("TOPLEFT", button, "TOPLEFT", 12, -12)
-    button.icon:SetSize(80, 80)
+    button.icon:SetSize(40, 40)
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 
+    -- border around the icon
     button.border = button:CreateTexture(nil, "OVERLAY")
-    button.border:SetPoint("TOPLEFT", button.icon, "TOPLEFT", -2, 2)
-    button.border:SetPoint("BOTTOMRIGHT", button.icon, "BOTTOMRIGHT", 2, -2)
+    button.border:SetPoint("CENTER", button.icon, "CENTER")
+    button.border:SetSize(62, 62)
     button.border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
-    button.border:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     button.name = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     button.name:SetPoint("TOPLEFT", button.icon, "TOPRIGHT", 10, -4)
@@ -173,7 +176,7 @@ function PJX:CreateUI()
     self.slotButtons = {}
     for i = 1, 3 do
         local slot = self:CreatePetSlot(i, top)
-        slot:SetPoint("TOPLEFT", top, "TOPLEFT", (i - 1) * 236, -45)
+        slot:SetPoint("TOPLEFT", top, "TOPLEFT", (i - 1) * pje.constants.SLOT_WIDTH, -50)
         self.slotButtons[i] = slot
     end
 
@@ -243,7 +246,7 @@ function PJX:RefreshSlots()
             button.petName, button.petIcon, button.petType = GetPetDisplayInfo(petID)
             button.icon:SetTexture(button.petIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
             button.name:SetText(button.petName)
-            button.typeText:SetText(button.petType or "Battle Pet")
+            button.typeText:SetText(pje.constants.PETTYPES[button.petType] or "Battle Pet")
         else
             button.petName = nil
             button.petIcon = "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -263,7 +266,7 @@ function PJX:RefreshPetList()
             local name, icon, petType = GetPetDisplayInfo(petID)
             button.petID = petID
             button.petName = name
-            button.petType = petType or "Battle Pet"
+            button.petType = pje.constants.PETTYPES[petType] or "Battle Pet"
             button.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
             button.name:SetText(name)
             button.typeText:SetText(button.petType)
