@@ -149,6 +149,15 @@ function PJX:CreatePetButton(index, parent)
     return button
 end
 
+function PJX:CreatePetFrame(index, parent)
+    local frame = CreateFrame("Frame", "PetJournalExtendedPetButton" .. index, parent, "BackdropTemplate")
+    frame:SetSize(220, 70)
+    frame:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 16, edgeSize = 16, insets = { left = 6, right = 6, top = 6, bottom = 6 } })
+    frame:SetBackdropColor(0.08, 0.08, 0.08, 0.85)
+
+    return frame
+end
+
 function PJX:CreateUI()
     if self.frame then
         return
@@ -196,15 +205,6 @@ function PJX:CreateUI()
     self.scrollChild = scrollChild
 
     self.petButtons = {}
-    local columns = 3
-    local rows = 6
-    for i = 1, columns * rows do
-        local btn = self:CreatePetButton(i, scrollChild)
-        local col = ((i - 1) % columns)
-        local row = math.floor((i - 1) / columns)
-        btn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", col * 228 + 4, -row * 78)
-        self.petButtons[i] = btn
-    end
 
     local scrollBar = _G[scrollFrame:GetName() .. "ScrollBar"]
     if scrollBar then
@@ -218,7 +218,7 @@ function PJX:CreateUI()
     self.scrollBar = scrollBar
 
     scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
-        self:GetScrollChild():SetPoint("TOPLEFT", self, "TOPLEFT", 0, -offset)
+        self:GetScrollChild():SetPoint("TOPLEFT", self, "TOPLEFT", 0, offset)
     end)
 end
 
@@ -260,26 +260,55 @@ end
 
 function PJX:RefreshPetList()
     local petIDs = GetOwnedPetIDs()
+    local columns = 3
+    local rows = math.ceil(#petIDs / columns)
+    
+    -- Create or recreate buttons if needed
+    if #self.petButtons ~= (columns * rows) then
+        -- Clear old buttons
+        for i, btn in ipairs(self.petButtons) do
+            btn:Hide()
+        end
+        self.petButtons = {}
+        
+        -- Create new buttons
+        for i = 1, columns * rows do
+            local btn = self:CreatePetFrame(i, self.scrollChild)
+            local col = ((i - 1) % columns)
+            local row = math.floor((i - 1) / columns)
+            btn:SetPoint("TOPLEFT", self.scrollChild, "TOPLEFT", col * 228 + 4, -row * 78)
+            self.petButtons[i] = btn
+        end
+
+        --for i = 1, columns * rows do
+          --  local btn = self:CreatePetFrame(i, self.scrollChild)
+          --  local col = ((i - 1) % columns)
+          --  local row = math.floor((i - 1) / columns)
+          --  btn:SetPoint("TOPLEFT", self.scrollChild, "TOPLEFT", col * 228 + 4, -row * 78)
+          --  self.petButtons[i] = btn
+        --end
+    end
+    
+    -- Populate buttons with pet data
     for index, button in ipairs(self.petButtons) do
         local petID = petIDs[index]
         if petID then
             local name, icon, petType = GetPetDisplayInfo(petID)
-            button.petID = petID
-            button.petName = name
-            button.petType = pje.constants.PETTYPES[petType] or "Battle Pet"
-            button.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-            button.name:SetText(name)
-            button.typeText:SetText(button.petType)
+            --button.petID = petID
+            --button.petName = name
+            --button.petType = pje.constants.PETTYPES[petType] or "Battle Pet"
+            --button.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            --button.name:SetText(name)
+            --button.typeText:SetText(button.petType)
             button:Show()
         else
-            button.petID = nil
-            button.petName = nil
-            button.petType = nil
+            --button.petID = nil
+            --button.petName = nil
+            --button.petType = nil
             button:Hide()
         end
     end
 
-    local rows = math.ceil(#petIDs / 3)
     local height = math.max(rows * 78, 1)
     self.scrollChild:SetHeight(height)
     if self.scrollBar then
