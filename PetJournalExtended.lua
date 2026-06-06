@@ -1,10 +1,13 @@
 local _,pje = ...
 local PJX = {}
 
+-- ============================================================================
+-- Utility Functions
+-- ============================================================================
+
+-- Safely retrieve pet info, handling both old and new API
 local function SafeGetPetInfoByPetID(petID)
-    if not petID then
-        return
-    end
+    if not petID then return end
     if C_PetJournal and C_PetJournal.GetPetInfoByPetID then
         return C_PetJournal.GetPetInfoByPetID(petID)
     elseif GetPetInfoByPetID then
@@ -12,12 +15,14 @@ local function SafeGetPetInfoByPetID(petID)
     end
 end
 
+-- Extract display information for a specific pet
 local function GetPetDisplayInfo(petID)
     local speciesID, customName, level, xp, maxXp, displayID, isFavorite, speciesName, icon, petType = SafeGetPetInfoByPetID(petID)
     local name = customName or speciesName or "Unknown Pet"
     return name, icon, petType
 end
 
+-- Get list of all pet IDs owned by the player
 local function GetOwnedPetIDs()
     local pets = {}
     if not C_PetJournal or not C_PetJournal.GetNumPets then
@@ -33,25 +38,31 @@ local function GetOwnedPetIDs()
     return pets
 end
 
--- this creates the UI elements for a single pet slot in the top section of the frame, 
--- which shows the currently assigned pets. It includes an icon, name, type, and a label for the slot number. 
--- It also sets up drag-and-drop functionality to allow assigning pets to the slot.
+-- ============================================================================
+-- UI Creation Functions
+-- ============================================================================
+
+-- Creates the UI elements for a single pet slot in the top section of the frame
 function PJX:CreatePetSlot(index, parent)
-    -- the frame itself
     local button = CreateFrame("Button", "PetJournalExtendedSlot" .. index, parent, "BackdropTemplate")
     button:SetSize(pje.constants.SLOT_WIDTH, pje.constants.SLOT_HEIGHT)
     button:SetNormalFontObject("GameFontNormal")
     button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-    button:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 16, edgeSize = 16, insets = { left = 6, right = 6, top = 6, bottom = 6 } })
-    button:SetBackdropColor(0.05, 0.05, 0.05, 0.75)
+    button:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 6, right = 6, top = 6, bottom = 6 }
+    })
+    button:SetBackdropColor(unpack(pje.constants.SLOT_BACKDROP_COLOR))
 
-    -- pet icon
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetPoint("TOPLEFT", button, "TOPLEFT", 12, -12)
     button.icon:SetSize(40, 40)
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 
-    -- border around the icon
     button.border = button:CreateTexture(nil, "OVERLAY")
     button.border:SetPoint("CENTER", button.icon, "CENTER")
     button.border:SetSize(62, 62)
@@ -77,8 +88,8 @@ function PJX:CreatePetSlot(index, parent)
     button:SetScript("OnReceiveDrag", function(self)
         self:GetParent().owner:ReceivePetDrop(self)
     end)
-    button:SetScript("OnMouseUp", function(self, button)
-        if button == "LeftButton" then
+    button:SetScript("OnMouseUp", function(self, mouseButton)
+        if mouseButton == "LeftButton" then
             self:GetParent().owner:ReceivePetDrop(self)
         end
     end)
@@ -100,29 +111,39 @@ function PJX:CreatePetSlot(index, parent)
     return button
 end
 
-function PJX:CreatePetButton(index, parent)
-    local button = CreateFrame("Button", "PetJournalExtendedPetButton" .. index, parent, "BackdropTemplate")
-    button:SetSize(220, 70)
+-- Creates a reusable pet button element for the scrollable grid
+-- Used in a virtual scrolling system: 24 buttons (8 rows × 3 columns) are
+-- pre-created and recycled by updating their displayed pet data
+function PJX:CreatePetButton(parent)
+    local button = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    button:SetSize(pje.constants.GRID_BUTTON_WIDTH, pje.constants.GRID_ROW_HEIGHT)
     button:SetNormalFontObject("GameFontNormal")
     button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-    button:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 16, edgeSize = 16, insets = { left = 6, right = 6, top = 6, bottom = 6 } })
-    button:SetBackdropColor(0.08, 0.08, 0.08, 0.85)
+    button:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 6, right = 6, top = 6, bottom = 6 }
+    })
+    button:SetBackdropColor(unpack(pje.constants.BUTTON_BACKDROP_COLOR))
 
     button.icon = button:CreateTexture(nil, "ARTWORK")
-    button.icon:SetPoint("LEFT", button, "LEFT", 8, 0)
-    button.icon:SetSize(52, 52)
+    button.icon:SetPoint("LEFT", button, "LEFT", 4, 0)
+    button.icon:SetSize(pje.constants.GRID_BUTTON_ICON_SIZE, pje.constants.GRID_BUTTON_ICON_SIZE)
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 
-    button.name = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    button.name:SetPoint("LEFT", button.icon, "RIGHT", 10, 6)
+    button.name = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    button.name:SetPoint("LEFT", button.icon, "RIGHT", 4, 5)
     button.name:SetJustifyH("LEFT")
-    button.name:SetWidth(130)
+    button.name:SetWidth(190)
     button.name:SetText("Pet Name")
 
-    button.typeText = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    button.typeText:SetPoint("LEFT", button.icon, "RIGHT", 10, -14)
+    button.typeText = button:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    button.typeText:SetPoint("LEFT", button.icon, "RIGHT", 4, -8)
     button.typeText:SetJustifyH("LEFT")
-    button.typeText:SetText("Pet Type")
+    button.typeText:SetText("Type")
 
     button:RegisterForDrag("LeftButton")
     button:SetScript("OnDragStart", function(self)
@@ -131,9 +152,7 @@ function PJX:CreatePetButton(index, parent)
         end
     end)
     button:SetScript("OnEnter", function(self)
-        if not self.petID then
-            return
-        end
+        if not self.petID then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(self.petName)
         if self.petType then
@@ -149,77 +168,117 @@ function PJX:CreatePetButton(index, parent)
     return button
 end
 
-function PJX:CreatePetFrame(index, parent)
-    local frame = CreateFrame("Frame", "PetJournalExtendedPetButton" .. index, parent, "BackdropTemplate")
-    frame:SetSize(220, 70)
-    frame:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 16, edgeSize = 16, insets = { left = 6, right = 6, top = 6, bottom = 6 } })
-    frame:SetBackdropColor(0.08, 0.08, 0.08, 0.85)
+function PJX:CreateUI()
+    if self.frame then return end
 
-    return frame
+    self:CreateMainFrame()
+    self:CreateSlotPanel()
+    self:CreatePetListPanel()
 end
 
-function PJX:CreateUI()
-    if self.frame then
-        return
-    end
+-- Create the main window frame
+function PJX:CreateMainFrame()
+    local frame = CreateFrame("Frame", "PetJournalExtendedMainFrame", UIParent)
+    frame:SetSize(pje.constants.FRAME_WIDTH, pje.constants.FRAME_HEIGHT)
+    frame:SetPoint("CENTER")
+    frame:Hide()
+    frame:SetMovable(false)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetFrameStrata("DIALOG")
+    frame.owner = self
+    
+    self.frame = frame
+end
 
-    local parent = UIParent
-    self.frame = CreateFrame("Frame", "PetJournalExtendedMainFrame", parent)
-    self.frame:SetSize(760, 540)
-    self.frame:SetPoint("CENTER")
-    self.frame:Hide()
-    self.frame:SetMovable(false)
-    self.frame:EnableMouse(true)
-    self.frame:RegisterForDrag("LeftButton")
-    self.frame:SetScript("OnDragStart", self.frame.StartMoving)
-    self.frame:SetScript("OnDragStop", self.frame.StopMovingOrSizing)
-    self.frame:SetFrameStrata("DIALOG")
-    self.frame.owner = self
-
-    local top = CreateFrame("Frame", nil, self.frame)
-    top:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, 0)
-    top:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", 0, 0)
-    top:SetHeight(200)
-    top.owner = self
+-- Create the top panel with 3 pet loadout slots
+function PJX:CreateSlotPanel()
+    local topPanel = CreateFrame("Frame", nil, self.frame)
+    topPanel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, 0)
+    topPanel:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", 0, 0)
+    topPanel:SetHeight(pje.constants.SLOTS_PANEL_HEIGHT)
+    topPanel.owner = self
 
     self.slotButtons = {}
-    for i = 1, 3 do
-        local slot = self:CreatePetSlot(i, top)
-        slot:SetPoint("TOPLEFT", top, "TOPLEFT", (i - 1) * pje.constants.SLOT_WIDTH, -50)
+    for i = 1, pje.constants.NUM_LOADOUT_SLOTS do
+        local slot = self:CreatePetSlot(i, topPanel)
+        local xOffset = pje.constants.SLOT_LEFT_MARGIN + (i - 1) * pje.constants.GRID_COLUMN_WIDTH
+        slot:SetPoint("TOPLEFT", topPanel, "TOPLEFT", xOffset, -50)
         self.slotButtons[i] = slot
     end
 
-    local bottomLabel = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    bottomLabel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 12, -212)
-    bottomLabel:SetText("All Pets")
+    local label = self.frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    label:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 12, pje.constants.BOTTOM_LABEL_Y)
+    label:SetText("All Pets")
+end
 
-    local scrollFrame = CreateFrame("ScrollFrame", "PetJournalExtendedPetScroll", self.frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 6, -240)
-    scrollFrame:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -6, 6)
-    scrollFrame:SetClipsChildren(true)
+-- Create the scrollable pet list panel with 3-column grid
+-- Uses virtual scrolling: pre-creates 24 buttons (8 rows × 3 columns) to display
+-- all pets without performance issues. Only visible buttons are updated each frame.
+function PJX:CreatePetListPanel()
+    local petListContainer = CreateFrame("Frame", nil, self.frame)
+    petListContainer:SetPoint("TOPLEFT", self.frame, "TOPLEFT", pje.constants.PANEL_MARGIN, pje.constants.PET_LIST_Y)
+    petListContainer:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -pje.constants.PANEL_MARGIN, pje.constants.PANEL_MARGIN)
+    petListContainer:EnableMouseWheel(true)
 
-    self.petScroll = scrollFrame
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(700, 1)
-    scrollFrame:SetScrollChild(scrollChild)
-    self.scrollChild = scrollChild
-
-    self.petButtons = {}
-
-    local scrollBar = _G[scrollFrame:GetName() .. "ScrollBar"]
-    if scrollBar then
-        scrollBar:SetMinMaxValues(0, 0)
-        scrollBar:SetValueStep(1)
-        scrollBar:SetValue(0)
-        scrollBar:SetScript("OnValueChanged", function(self, value)
-            scrollFrame:SetVerticalScroll(value)
-        end)
+    -- Create 3-column grid of pet buttons (8 rows × 3 columns = 24 visible buttons)
+    self.petRows = {}
+    for row = 0, pje.constants.GRID_VISIBLE_ROWS - 1 do
+        for col = 0, pje.constants.GRID_COLUMNS - 1 do
+            local button = self:CreatePetButton(petListContainer)
+            local xOffset = col * pje.constants.GRID_COLUMN_WIDTH
+            local yOffset = -(row * pje.constants.GRID_ROW_HEIGHT)
+            button:SetPoint("TOPLEFT", petListContainer, "TOPLEFT", xOffset, yOffset)
+            button:Hide()
+            local buttonIndex = row * pje.constants.GRID_COLUMNS + col + 1
+            self.petRows[buttonIndex] = button
+        end
     end
-    self.scrollBar = scrollBar
 
-    scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
-        self:GetScrollChild():SetPoint("TOPLEFT", self, "TOPLEFT", 0, offset)
+    -- Create scrollbar
+    local scrollbar = self:CreateScrollbar(petListContainer)
+    self.petSlider = scrollbar
+
+    -- Setup mouse wheel scrolling
+    local function OnMouseWheel(_, delta)
+        scrollbar:SetValue((scrollbar:GetValue() or 0) - delta)
+    end
+    petListContainer:SetScript("OnMouseWheel", OnMouseWheel)
+    for _, button in ipairs(self.petRows) do
+        button:EnableMouseWheel(true)
+        button:SetScript("OnMouseWheel", OnMouseWheel)
+    end
+
+    self.petListContainer = petListContainer
+    self.petOffset = 0
+    self.allPets = {}
+end
+
+-- Create the vertical scrollbar
+function PJX:CreateScrollbar(parent)
+    local scrollbar = CreateFrame("Slider", nil, self.frame)
+    scrollbar:SetOrientation("VERTICAL")
+    scrollbar:SetWidth(14)
+    scrollbar:SetPoint("TOPLEFT", parent, "TOPRIGHT", -5, 0)
+    scrollbar:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", -5, 0)
+    scrollbar:SetMinMaxValues(0, 0)
+    scrollbar:SetValueStep(1)
+    scrollbar:SetObeyStepOnDrag(true)
+    scrollbar:SetThumbTexture("Interface\\Buttons\\UI-ScrollBar-Knob")
+    
+    local thumb = scrollbar:GetThumbTexture()
+    if thumb and thumb.SetSize then
+        thumb:SetSize(14, 26)
+    end
+
+    scrollbar:SetScript("OnValueChanged", function(_, value)
+        self.petOffset = math.floor((value or 0) + 0.5)
+        self:RenderPetList()
     end)
+
+    return scrollbar
 end
 
 function PJX:ReceivePetDrop(slotButton)
@@ -233,6 +292,10 @@ function PJX:ReceivePetDrop(slotButton)
         self:Refresh()
     end
 end
+
+-- ============================================================================
+-- Refresh Functions
+-- ============================================================================
 
 function PJX:RefreshSlots()
     if not C_PetJournal or not C_PetJournal.GetPetLoadOutInfo then
@@ -258,64 +321,69 @@ function PJX:RefreshSlots()
     end
 end
 
+-- Render the visible portion of the pet list based on scroll offset
+-- Virtual scrolling algorithm: Uses pre-created 24 buttons to display any subset
+-- of pets. Calculate which pet data to show in each button using scrollOffset.
+-- Formula: petIndex = (scrollOffset + row) * GRID_COLUMNS + col + 1
+function PJX:RenderPetList()
+    if not self.frame then return end
+    
+    local scrollOffset = self.petOffset or 0
+    
+    for row = 0, pje.constants.GRID_VISIBLE_ROWS - 1 do
+        for col = 0, pje.constants.GRID_COLUMNS - 1 do
+            local buttonIndex = row * pje.constants.GRID_COLUMNS + col + 1
+            local button = self.petRows[buttonIndex]
+            local petIndex = (scrollOffset + row) * pje.constants.GRID_COLUMNS + col + 1
+            local petData = self.allPets[petIndex]
+            
+            if petData then
+                button.petID = petData.petID
+                button.petName = petData.name
+                button.petType = petData.petType
+                button.icon:SetTexture(petData.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+                button.name:SetText(petData.name)
+                button.typeText:SetText(petData.petType)
+                button:Show()
+            else
+                button.petID = nil
+                button:Hide()
+            end
+        end
+    end
+end
+
+-- Refresh the pet list from Blizzard API and re-render
 function PJX:RefreshPetList()
     local petIDs = GetOwnedPetIDs()
-    local columns = 3
-    local rows = math.ceil(#petIDs / columns)
     
-    -- Create or recreate buttons if needed
-    if #self.petButtons ~= (columns * rows) then
-        -- Clear old buttons
-        for i, btn in ipairs(self.petButtons) do
-            btn:Hide()
-        end
-        self.petButtons = {}
-        
-        -- Create new buttons
-        for i = 1, columns * rows do
-            local btn = self:CreatePetFrame(i, self.scrollChild)
-            local col = ((i - 1) % columns)
-            local row = math.floor((i - 1) / columns)
-            btn:SetPoint("TOPLEFT", self.scrollChild, "TOPLEFT", col * 228 + 4, -row * 78)
-            self.petButtons[i] = btn
-        end
-
-        --for i = 1, columns * rows do
-          --  local btn = self:CreatePetFrame(i, self.scrollChild)
-          --  local col = ((i - 1) % columns)
-          --  local row = math.floor((i - 1) / columns)
-          --  btn:SetPoint("TOPLEFT", self.scrollChild, "TOPLEFT", col * 228 + 4, -row * 78)
-          --  self.petButtons[i] = btn
-        --end
+    -- Build pet data table
+    self.allPets = {}
+    for index, petID in ipairs(petIDs) do
+        local name, icon, petType = GetPetDisplayInfo(petID)
+        self.allPets[index] = {
+            petID = petID,
+            name = name,
+            icon = icon,
+            petType = pje.constants.PETTYPES[petType] or "Battle Pet"
+        }
     end
     
-    -- Populate buttons with pet data
-    for index, button in ipairs(self.petButtons) do
-        local petID = petIDs[index]
-        if petID then
-            local name, icon, petType = GetPetDisplayInfo(petID)
-            --button.petID = petID
-            --button.petName = name
-            --button.petType = pje.constants.PETTYPES[petType] or "Battle Pet"
-            --button.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-            --button.name:SetText(name)
-            --button.typeText:SetText(button.petType)
-            button:Show()
-        else
-            --button.petID = nil
-            --button.petName = nil
-            --button.petType = nil
-            button:Hide()
-        end
+    -- Calculate max scroll offset for 3-column grid
+    local totalRows = math.ceil(#self.allPets / pje.constants.GRID_COLUMNS)
+    local maxScrollOffset = math.max(0, totalRows - pje.constants.GRID_VISIBLE_ROWS)
+    
+    if (self.petOffset or 0) > maxScrollOffset then
+        self.petOffset = maxScrollOffset
     end
-
-    local height = math.max(rows * 78, 1)
-    self.scrollChild:SetHeight(height)
-    if self.scrollBar then
-        local visibleHeight = self.petScroll:GetHeight()
-        self.scrollBar:SetMinMaxValues(0, math.max(0, height - visibleHeight))
-        self.scrollBar:SetValue(0)
+    
+    if self.petSlider then
+        self.petSlider:SetMinMaxValues(0, maxScrollOffset)
+        self.petSlider:SetValue(self.petOffset or 0)
     end
+    
+    -- Render the visible rows
+    self:RenderPetList()
 end
 
 function PJX:Refresh()
@@ -325,6 +393,10 @@ function PJX:Refresh()
     self:RefreshSlots()
     self:RefreshPetList()
 end
+
+-- ============================================================================
+-- Event Handlers
+-- ============================================================================
 
 function PJX:OnPetJournalShown()
     if self.suppressHook then
@@ -453,3 +525,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         eventHandlers[event](...)
     end
 end)
+
+-- ============================================================================
+-- Export UI Module
+-- ============================================================================
+
+pje.UI = PJX
+_G.PetJournalExtended = PJX
